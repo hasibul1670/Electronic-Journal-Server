@@ -88,7 +88,7 @@ app.post('/file', upload.single('file'), function (req, res, next) {
 
   // Do something with the file URL, such as saving it to a database
 
-  res.send(`File URL: ${fileUrl}`);
+  res.send(`${fileUrl}`);
 
  
 });
@@ -110,7 +110,6 @@ app.post('/submittedData', async (req, res) => {
    
 
 
-// multer task
 
 
 
