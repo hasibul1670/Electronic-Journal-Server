@@ -19,7 +19,7 @@ app.set("view engin", "ejs");
 app.use(cors());
 app.use(express.json());
 var jwt = require('jsonwebtoken');
-var token = jwt.sign({ foo: 'bar' }, 'shhhhh');
+// var token = jwt.sign({ foo: 'bar' }, 'shhhhh');
 
 // Set up Multer storage options
 const storage = multer.diskStorage({
@@ -52,15 +52,15 @@ const conn = mongoose.createConnection(uri);
 function verifyJWT(req, res, next) {
 
   const bearerHeader = req.headers.authorization;
+
 if(!bearerHeader){
   return res.status(401).send({message:"Unauthorized Access"});
 }
 const token = bearerHeader.split(' ')[1];
 jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, function(err,decoded){
   if(err){
-  return res.status(401).send({message:"Unauthorized Access"})
+  return res.status(401).send({message:"Unauthorized Access"});
   }
-  
   req.decoded = decoded;
   next();
 })
@@ -110,7 +110,7 @@ async function run() {
 
     app.post('/jwt',(req,res)=>{
       const user =req.body;
-      const token = jwt.sign({ user },process.env.ACCESS_TOKEN_SECRET, { expiresIn:'72h'});
+      const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET, { expiresIn:'72h'});
       res.send({token})
 
 
@@ -162,7 +162,7 @@ async function run() {
     app.get("/submittedData",verifyJWT, async (req, res) => {
       const decoded = req.decoded;
 
-      if(decoded.user.email !== req.query.email) {
+      if(decoded.email !== req.query.email) {
 return res.status(401).send({message:'Unauthorized Access'})
       }
       let query = {};
@@ -203,6 +203,28 @@ res.send(data);
                   res.send(result.deletedCount > 0);
               })
       })
+
+      //submitted data get ops
+
+        // Retrieve the data for the requested ID from the database
+        app.get('/submittedData/:id', (req, res) => {
+          const id = req.params.id;
+          const objectId = ObjectId(id);
+  dataCollection.findOne({ _id: objectId }, (err, data) => {
+            if (err) {
+              console.error(err);
+              res.status(500).send('An error occurred while retrieving data');
+              return;
+            }
+            if (!data) {
+              res.status(404).send('Data not found');
+              return;
+            }
+        
+            res.send(data);
+          });
+        });
+
 
 
     // Editor GET Coding
