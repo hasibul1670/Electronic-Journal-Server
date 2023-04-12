@@ -74,22 +74,36 @@ async function run() {
     await client.connect();
     console.log("DB connected!!!");
 
-    const authorCollection = client.db("ejournal20").collection("author");
+
     const editorCollection = client.db("ejournal20").collection("editor");
     const reviewerCollection = client.db("ejournal20").collection("reviewer");
     const dataCollection = client.db("ejournal20").collection("submittedData");
+    const usersCollection = client.db("ejournal20").collection("users");
 
     // author Post Coding
-    app.post("/author", (req, res) => {
+    app.post("/author",async (req, res) => {
       const author = req.body;
       const query = { authorEmail: author.authorEmail };
-      const exists = authorCollection.findOne(query);
+      const exists = await usersCollection.findOne(query);
       if (exists) {
         return res.send({ success: false, authorEmai: exists });
       }
-      const result = authorCollection.insertOne(author);
+      const result =await usersCollection.insertOne(author);
       return res.send({ success: true, result });
     });
+//All users Post Method 
+
+   // author Post Coding
+  //  app.post("/users",async(req, res) => {
+  //   const user = req.body;
+  //   const query = { authorEmail: author.authorEmail };
+  //   const exists = authorCollection.findOne(query);
+  //   if (exists) {
+  //     return res.send({ success: false, authorEmai: exists });
+  //   }
+  //   const result = authorCollection.insertOne(author);
+  //   return res.send({ success: true, result });
+  // });
 
     const upload = multer({ storage: storage });
 
@@ -185,7 +199,7 @@ res.send(data);
 
     // author GET Coding
     app.get("/author", async (req, res) => {
-      const author = await authorCollection.find({ query }).toArray();
+      const author = await usersCollection.find({ query }).toArray();
       res.send(author);
     });
 
