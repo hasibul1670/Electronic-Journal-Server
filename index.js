@@ -203,6 +203,16 @@ res.send(data);
       res.send(author);
     });
 
+        // author GET Coding
+    app.get("/users", async (req, res) => {
+          
+          const users = await usersCollection.find({ query }).toArray();
+          res.send(users);
+        });
+    
+    
+
+
     // Editor GET Coding
     app.get("/editor", async (req, res) => {
       const editor = await editorCollection.find({ query }).toArray();
@@ -240,6 +250,31 @@ res.send(data);
         });
 
 
+    
+    //UPDATE Users Data Collection
+    app.put('/users/admin/:id', async (req, res) => {
+      
+      const id = req.params.id;
+      
+      const filter = { _id: ObjectId(id) }
+   
+    const updateDoc = {
+    $set: {
+      role: 'admin'
+    }
+  };
+  const options = { returnOriginal: false };
+
+  try {
+    const result = await usersCollection.findOneAndUpdate(filter, updateDoc, options);
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error);
+  }
+    })
+    
+    
 
     // Editor GET Coding
     app.get("/reviewer", async (req, res) => {
