@@ -203,16 +203,8 @@ res.send(data);
       res.send(author);
     });
 
-        // author GET Coding
-    app.get("/users", async (req, res) => {
-          
-          const users = await usersCollection.find({ query }).toArray();
-          res.send(users);
-        });
-    
-    
 
-
+  
     // Editor GET Coding
     app.get("/editor", async (req, res) => {
       const editor = await editorCollection.find({ query }).toArray();
@@ -249,15 +241,30 @@ res.send(data);
           });
         });
 
+    app.get('/users/admin', async (req, res) => {
+            const query = {};
+      const user = await usersCollection.find(query).toArray();
 
+            res.send(user);
+    });
     
-    //UPDATE Users Data Collection
-    app.put('/users/admin/:id', async (req, res) => {
-      
-      const id = req.params.id;
-      
-      const filter = { _id: ObjectId(id) }
    
+
+
+
+
+
+ 
+    //UPDATE Users Data Collection
+    app.put('/users/admin/:id', verifyJWT, async (req, res) => {
+      const decodedEmail = req.decoded.email;
+      const query = { email: decodeEmail };
+      const user = await usersCollection.findOne(query);
+      if(user?.role!=='admin'){
+        return res.status(401).send({message:'Unauthorized Access'})
+      }
+      const id = req.params.id;    
+      const filter = { _id: ObjectId(id) }
     const updateDoc = {
     $set: {
       role: 'admin'
@@ -276,11 +283,45 @@ res.send(data);
     
     
 
+
+
+
     // Editor GET Coding
     app.get("/reviewer", async (req, res) => {
       const editor = await reviewerCollection.find({ query }).toArray();
       res.send(editor);
     });
+
+
+    
+      app.get('/users/admin/:email', async (req, res) => {
+     const email = req.params.email;
+        const query = { email };
+ 
+  const user = await usersCollection.findOne(query);
+     
+        res.send({ isAdmin: user?.role === 'admin' });
+if (!user) {
+ 
+  return res.status(404).send(`No user found with  ${email}`);
+}
+ });
+    
+    
+
+    app.get('/reviewer/:email', async (req, res) => {
+     const email = req.params.email;
+const query ={email};
+
+  const user = await reviewerCollection.findOne(query);
+      res.send(user);
+if (!user) {
+  console.log(`No user found with  ${email}`);
+  return res.status(404).send(`No user found with  ${email}`);
+}
+ });
+    
+    
   } finally {
     // await client.close();
   }
