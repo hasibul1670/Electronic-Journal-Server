@@ -298,7 +298,7 @@ res.send(data);
  
   const user = await usersCollection.findOne(query);
      
- res.send({ isAdmin: user?.phone === "+8801521583763" });
+ res.send({ isAdmin: user?.phone === "admin" });
 
  });
     
