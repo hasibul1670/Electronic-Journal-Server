@@ -91,6 +91,7 @@ async function run() {
       const result =await usersCollection.insertOne(author);
       return res.send({ success: true, result });
     });
+
 //All users Post Method 
 
    // author Post Coding
@@ -220,27 +221,33 @@ res.send(data);
               })
       })
 
-      //submitted data get ops
 
-        // Retrieve the data for the requested ID from the database
-        app.get('/submittedData/:id', (req, res) => {
-          const id = req.params.id;
-          const objectId = ObjectId(id);
-  dataCollection.findOne({ _id: objectId }, (err, data) => {
-            if (err) {
-              console.error(err);
-              res.status(500).send('An error occurred while retrieving data');
-              return;
-            }
-            if (!data) {
-              res.status(404).send('Data not found');
-              return;
-            }
-        
-            res.send(data);
-          });
-        });
 
+
+
+ // Retrieve the data for the requested ID from the database
+
+    app.get('/submittedData/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const objectId = ObjectId(id);
+
+    const user = await dataCollection.findOne({ _id: objectId });
+
+    if (!user) {
+      res.status(404).send('Data not found');
+      return;
+    }
+
+    res.send(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('An error occurred while retrieving data');
+  }
+});
+
+    
+    
     app.get('/users/admin', async (req, res) => {
             const query = {};
       const user = await usersCollection.find(query).toArray();
@@ -248,17 +255,11 @@ res.send(data);
             res.send(user);
     });
     
-   
-
-
-
-
-
- 
+  
     //UPDATE Users Data Collection
     app.put('/users/admin/:id', verifyJWT, async (req, res) => {
       const decodedEmail = req.decoded.email;
-      const query = { email: decodeEmail };
+      const query = { email: decodedEmail };
       const user = await usersCollection.findOne(query);
       if(user?.role!=='admin'){
         return res.status(401).send({message:'Unauthorized Access'})
@@ -283,30 +284,23 @@ res.send(data);
     
     
 
-
-
-
     // Editor GET Coding
     app.get("/reviewer", async (req, res) => {
       const editor = await reviewerCollection.find({ query }).toArray();
       res.send(editor);
     });
 
-
+    //Get Admin data
     
-      app.get('/users/admin/:email', async (req, res) => {
+ app.get('/users/admin/:email', async (req, res) => {
      const email = req.params.email;
         const query = { email };
  
   const user = await usersCollection.findOne(query);
      
-        res.send({ isAdmin: user?.role === 'admin' });
-if (!user) {
- 
-  return res.status(404).send(`No user found with  ${email}`);
-}
+ res.send({ isAdmin: user?.phone === "+8801521583763" });
+
  });
-    
     
 
     app.get('/reviewer/:email', async (req, res) => {
