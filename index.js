@@ -224,7 +224,7 @@ async function run() {
 
 
     
-       app.get("/submittedData",async (req, res) => {
+       app.get("/adminData",async (req, res) => {
         const query = {};
     const cursor= dataCollection.find(query);
     const data=await cursor.toArray();
