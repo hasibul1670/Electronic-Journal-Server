@@ -130,7 +130,7 @@ async function run() {
       const user = await usersCollection.findOne(query);
       if (user) {
         const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
-          expiresIn: "1h",
+          expiresIn: "72h",
         });
 
         return res.send({ accessToken: token });
@@ -299,6 +299,41 @@ async function run() {
       }
     });
 
+//PUt Assign Reviewer
+    app.put("/assign/:id", async (req, res) => {
+      const id = req.params.id;
+      const status = req.body.status;
+      console.log('Hello',status);
+
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          assignReviewer: status,
+        },
+      };
+      const options = { returnOriginal: false };
+
+      try {
+        const result = await dataCollection.findOneAndUpdate(
+          filter,
+          updateDoc,
+          options
+        );
+
+        // Check if the document was updated
+        if (!result.value) {
+          return res.status(404).send({ message: "Document not found" });
+        }
+
+        res.send(result);
+        console.log('Hello',result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send(error);
+      }
+    });
+
+    
     // Editor GET Coding
     app.get("/reviewer", async (req, res) => {
       const editor = await reviewerCollection.find({ query }).toArray();
