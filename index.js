@@ -77,10 +77,11 @@ async function run() {
     // author Post Coding
     app.post("/author", async (req, res) => {
       const author = req.body;
-      const query = { authorEmail: author.authorEmail };
+      const query = { email: author.email };
+      console.log('Hello',author);
       const exists = await usersCollection.findOne(query);
       if (exists) {
-        return res.send({ success: false, authorEmai: exists });
+        return res.send({ success: false, email: exists });
       }
       const result = await usersCollection.insertOne(author);
       return res.send({ success: true, result });
@@ -91,7 +92,7 @@ async function run() {
     // author Post Coding
     //  app.post("/users",async(req, res) => {
     //   const user = req.body;
-    //   const query = { authorEmail: author.authorEmail };
+
     //   const exists = authorCollection.findOne(query);
     //   if (exists) {
     //     return res.send({ success: false, authorEmai: exists });
@@ -127,7 +128,9 @@ async function run() {
     app.get("/jwt", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
+    
       const user = await usersCollection.findOne(query);
+    
       if (user) {
         const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
           expiresIn: "72h",
@@ -135,6 +138,7 @@ async function run() {
 
         return res.send({ accessToken: token });
       }
+
       res.status(403).send({ accessToken: "" });
     });
 
@@ -204,7 +208,7 @@ async function run() {
         res.status(500).send("An error occurred while retrieving data");
       }
     });
-//get data collection
+    //get data collection
     app.get("/submittedData", verifyJWT, async (req, res) => {
       const decoded = req.decoded;
       if (decoded.email !== req.query.email) {
@@ -222,17 +226,15 @@ async function run() {
       res.send(data);
     });
 
+    app.get("/adminData", async (req, res) => {
+      const query = {};
+      const cursor = dataCollection.find(query);
+      const data = await cursor.toArray();
+      res.send(data);
 
-    
-       app.get("/adminData",async (req, res) => {
-        const query = {};
-    const cursor= dataCollection.find(query);
-    const data=await cursor.toArray();
-             res.send(data);
-             console.log('Hello',data);
-       });
-    
+    });
 
+    //npm run start-dev
     app.get("/uploads/:filename", (req, res) => {
       const { filename } = req.params;
       const filePath = path.join(__dirname, "uploads", filename);
@@ -299,11 +301,10 @@ async function run() {
       }
     });
 
-//PUt Assign Reviewer
+    //PUt Assign Reviewer
     app.put("/assign/:id", async (req, res) => {
       const id = req.params.id;
       const status = req.body.status;
-      console.log('Hello',status);
 
       const filter = { _id: ObjectId(id) };
       const updateDoc = {
@@ -326,14 +327,13 @@ async function run() {
         }
 
         res.send(result);
-        console.log('Hello',result);
+  
       } catch (error) {
-        console.error(error);
+     
         res.status(500).send(error);
       }
     });
 
-    
     // Editor GET Coding
     app.get("/reviewer", async (req, res) => {
       const editor = await reviewerCollection.find({ query }).toArray();
@@ -348,6 +348,16 @@ async function run() {
       const user = await usersCollection.findOne(query);
       res.send({ isAdmin: user?.role === "admin" });
     });
+
+
+      app.get("/users/reviewer/:email", async (req, res) => {
+        const email = req.params.email;
+        const query = { email };
+        const user = await usersCollection.findOne(query);
+ console.log(user?.isReviewer);
+        res.send({ isReviewer: user?.isReviewer == 'true' });
+      });
+
 
     app.get("/reviewer/:email", async (req, res) => {
       const email = req.params.email;
