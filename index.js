@@ -78,7 +78,7 @@ async function run() {
     app.post("/author", async (req, res) => {
       const author = req.body;
       const query = { email: author.email };
-      console.log('Hello',author);
+     // console.log('Hello',author);
       const exists = await usersCollection.findOne(query);
       if (exists) {
         return res.send({ success: false, email: exists });
@@ -86,21 +86,6 @@ async function run() {
       const result = await usersCollection.insertOne(author);
       return res.send({ success: true, result });
     });
-
-    //All users Post Method
-
-    // author Post Coding
-    //  app.post("/users",async(req, res) => {
-    //   const user = req.body;
-
-    //   const exists = authorCollection.findOne(query);
-    //   if (exists) {
-    //     return res.send({ success: false, authorEmai: exists });
-    //   }
-    //   const result = authorCollection.insertOne(author);
-    //   return res.send({ success: true, result });
-    // });
-
     const upload = multer({ storage: storage });
 
     // Define the route for handling file uploads
@@ -118,12 +103,6 @@ async function run() {
       res.send(`${fileUrl}`);
     });
 
-    // app.post('/jwt',(req,res)=>{
-    //   const user =req.body;
-    //   const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET, { expiresIn:10});
-    //   res.send({token})
-
-    // })
 
     app.get("/jwt", async (req, res) => {
       const email = req.query.email;
@@ -231,10 +210,24 @@ async function run() {
       const cursor = dataCollection.find(query);
       const data = await cursor.toArray();
       res.send(data);
+   
 
     });
+    
+
+    app.get("/revData", async (req, res) => {
+      const email = req.query.email;
+    
+        const cursor = dataCollection.find({ assignReviewerEmail: email });
+   const data = await cursor.toArray();
+      res.send(data);
+        // console.log("Hello", data);
+     
+    });
+
 
     //npm run start-dev
+
     app.get("/uploads/:filename", (req, res) => {
       const { filename } = req.params;
       const filePath = path.join(__dirname, "uploads", filename);
@@ -253,7 +246,7 @@ async function run() {
       res.send(editor);
     });
 
-    ///////////Delete Opatation////////////
+    ///////////Delete Opatation///////////
     app.delete("/submittedData/:id", (req, res) => {
       dataCollection
         .deleteOne({ _id: ObjectId(req.params.id) })
@@ -304,12 +297,13 @@ async function run() {
     //PUt Assign Reviewer
     app.put("/assign/:id", async (req, res) => {
       const id = req.params.id;
-      const status = req.body.status;
-
+        const { assignReviewer, assignReviewerEmail } = req.body;
+    
       const filter = { _id: ObjectId(id) };
       const updateDoc = {
         $set: {
-          assignReviewer: status,
+          assignReviewer: assignReviewer,
+          assignReviewerEmail: assignReviewerEmail,
         },
       };
       const options = { returnOriginal: false };
@@ -354,7 +348,7 @@ async function run() {
         const email = req.params.email;
         const query = { email };
         const user = await usersCollection.findOne(query);
- console.log(user?.isReviewer);
+
         res.send({ isReviewer: user?.isReviewer == 'true' });
       });
 
