@@ -235,10 +235,44 @@ async function run() {
     });
 
     // author GET Coding
-    app.get("/author", async (req, res) => {
-      const author = await usersCollection.find({ query }).toArray();
-      res.send(author);
+    app.get('/author',async(req, res) => {
+      // Get the email parameter from the request query string
+      const email = req.query.email;
+      // Create a query object that matches the email field
+      const query = { email: email };
+      // Find the document that matches the query
+      const cursor = usersCollection.find(query);
+      const data = await cursor.toArray();
+      res.send(data);
+     
     });
+
+  
+//update author data
+
+app.put('/authorData/:email', async(req, res) =>{
+  const email= req.params.email;
+  const user = req.body;
+  const filter = {email: email}
+  const options = {upsert: true}
+  const updatedUser = {
+      $set: {
+          name: user.name,
+          phone: user.phone,
+          institutionName: user.institutionName,
+          department: user.department,
+          city: user.city,
+          postalCode: user.postalCode
+      }
+  }
+
+  const result = await usersCollection.updateOne(filter, updatedUser, options );
+  res.send(result);
+})
+
+
+//////////end of 
+
 
     // Editor GET Coding
     app.get("/editor", async (req, res) => {
@@ -260,7 +294,6 @@ async function run() {
     app.get("/users/admin", async (req, res) => {
       const query = {};
       const user = await usersCollection.find(query).toArray();
-
       res.send(user);
     });
 
