@@ -257,7 +257,7 @@ app.put('/authorData/:email', async(req, res) =>{
   const options = {upsert: true}
   const updatedUser = {
       $set: {
-          name: user.name,
+        authorName: user.authorName,
           phone: user.phone,
           institutionName: user.institutionName,
           department: user.department,
@@ -296,6 +296,13 @@ app.put('/authorData/:email', async(req, res) =>{
       const user = await usersCollection.find(query).toArray();
       res.send(user);
     });
+
+    app.get("/allUserData", async (req, res) => {
+      const query = {};
+      const user = await usersCollection.find(query).toArray();
+      res.send(user);
+    });
+
 
     //UPDATE Users Data Collection
     app.put("/users/admin/:id", verifyJWT, async (req, res) => {
