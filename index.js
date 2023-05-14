@@ -253,6 +253,7 @@ async function run() {
 app.put('/authorData/:email', async(req, res) =>{
   const email= req.params.email;
   const user = req.body;
+  console.log('Hello',user);
   const filter = {email: email}
   const options = {upsert: true}
   const updatedUser = {
@@ -262,7 +263,8 @@ app.put('/authorData/:email', async(req, res) =>{
           institutionName: user.institutionName,
           department: user.department,
           city: user.city,
-          postalCode: user.postalCode
+          postalCode: user.postalCode,
+          profilePic : user.imageUrl
       }
   }
 
