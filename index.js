@@ -249,29 +249,49 @@ async function run() {
 
   
 //update author data
-
-app.put('/authorData/:email', async(req, res) =>{
-  const email= req.params.email;
+app.put('/authorData/:email', async (req, res) => {
+  const email = req.params.email;
   const user = req.body;
-  console.log('Hello',user);
-  const filter = {email: email}
-  const options = {upsert: true}
-  const updatedUser = {
-      $set: {
-        authorName: user.authorName,
-          phone: user.phone,
-          institutionName: user.institutionName,
-          department: user.department,
-          city: user.city,
-          postalCode: user.postalCode,
-          profilePic : user.imageUrl
-      }
+  console.log('Hello', user);
+  const filter = { email: email };
+  const options = { upsert: true };
+  
+  // create a new object with non-null properties from `user`
+  const updateUser = {};
+  if (user.authorName !== null && user.authorName !== undefined) {
+    updateUser.authorName = user.authorName;
+  }
+  if (user.phone !== null && user.phone !== undefined) {
+    updateUser.phone = user.phone;
+  }
+  if (user.institutionName !== null && user.institutionName !== undefined) {
+    updateUser.institutionName = user.institutionName;
+  }
+  if (user.department !== null && user.department !== undefined) {
+    updateUser.department = user.department;
+  }
+  if (user.city !== null && user.city !== undefined) {
+    updateUser.city = user.city;
+  }
+  if (user.postalCode !== null && user.postalCode !== undefined) {
+    updateUser.postalCode = user.postalCode;
+  }
+  if (user.imageUrl !== null && user.imageUrl !== undefined) {
+    updateUser.profilePic = user.imageUrl;
   }
 
-  const result = await usersCollection.updateOne(filter, updatedUser, options );
-  res.send(result);
-})
+  const updatedUser = {
+    $set: updateUser
+  };
 
+  try {
+    const result = await usersCollection.updateOne(filter, updatedUser, options);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err);
+  }
+});
 
 //////////end of 
 
