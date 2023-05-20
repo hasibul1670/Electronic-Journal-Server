@@ -72,6 +72,115 @@ async function run() {
     const dataCollection = client.db("ejournal20").collection("submittedData");
     const usersCollection = client.db("ejournal20").collection("users");
 
+    //POSt Operation
+    //reviewer login start
+
+    app.post("/reviewerLogin", async (req, res) => {
+      const { email, password, userType } = req.body;
+      try {
+        if (userType === "author") {
+          const user = await usersCollection.findOne({ email });
+          if (!user) {
+            return res.status(401).send({
+              success: false,
+              message: "You are not an Author",
+            });
+          }
+          if (user.role !== "admin") {
+            if (!user) {
+              return res.status(401).send({
+                success: false,
+                message: "Invalid email or authoremail password",
+              });
+            }
+
+            if (user.password !== password) {
+              return res.status(401).send({
+                success: false,
+                message: "Invalid email or authorpasss password",
+              });
+            }
+            return res.send({
+              success: true,
+              message: "Author Login successful",
+              user,
+            });
+          } else {
+            return res.send({
+              success: false,
+              message: "You are not an Author",
+              user,
+            });
+          }
+        } else if (userType === "editor") {
+          const user = await usersCollection.findOne({
+            email,
+          });
+          if (!user) {
+            return res.status(401).send({
+              success: false,
+              message: "You are not an Editor",
+            });
+          }
+
+          if (user.role === "admin") {
+            if (!user) {
+              return res
+                .status(401)
+                .send({ success: false, message: "Invalid email or password" });
+            }
+
+            if (user.password !== password) {
+              return res
+                .status(401)
+                .send({ success: false, message: "Invalid email or password" });
+            }
+            return res.send({
+              success: true,
+              message: "Editor Login successful",
+              user,
+            });
+          } else {
+            return res.send({
+              success: false,
+              message: "You are not an Editor",
+              user,
+            });
+          }
+        } else if (userType === "reviewer") {
+          const user = await reviewerCollection.findOne({
+            email,
+          });
+
+          if (!user) {
+            return res
+              .status(401)
+              .send({ success: false, message: "You are not a Reviewer" });
+          }
+
+          if (user.password !== password) {
+            return res
+              .status(401)
+              .send({ success: false, message: "Invalid email or password" });
+          }
+          return res.send({
+            success: true,
+            message: " Reviewer Login successful",
+            user,
+          });
+        } else {
+          return res
+            .status(401)
+            .json({ success: false, message: "Invalid user type" });
+        }
+      } catch (error) {
+        console.error(error);
+        return res
+          .status(500)
+          .json({ success: false, error: "Internal Server Error" });
+      }
+    });
+
     // author Post Coding
     app.post("/author", async (req, res) => {
       const author = req.body;
@@ -100,20 +209,6 @@ async function run() {
       return res.send({ success: true, author });
     });
 
-    //get reviewer from db
-
-    app.get("/getReviewer", async (req, res) => {
-      try {
-        const users = await reviewerCollection.find().toArray();
-        return res.send(users);
-      } catch (error) {
-        console.error(error);
-        return res
-          .status(500)
-          .send({ success: false, error: "Internal Server Error" });
-      }
-    });
-
     // Define the route for handling file uploads
     app.post("/file", upload.single("file"), function (req, res, next) {
       // Access the uploaded file using req.file
@@ -127,23 +222,6 @@ async function run() {
       // Do something with the file URL, such as saving it to a database
 
       res.send(`${fileUrl}`);
-    });
-
-    app.get("/jwt", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-
-      const user = (await usersCollection) || reviewerCollection.findOne(query);
-
-      if (user) {
-        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
-          expiresIn: "72h",
-        });
-
-        return res.send({ accessToken: token });
-      }
-
-      res.status(403).send({ accessToken: "" });
     });
 
     app.post("/submittedData", async (req, res) => {
@@ -183,7 +261,36 @@ async function run() {
       }
     });
 
-    // get file  from submittedData
+    //GET operations
+
+    app.get("/jwt", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+
+      const user = (await usersCollection) || reviewerCollection.findOne(query);
+
+      if (user) {
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
+          expiresIn: "72h",
+        });
+
+        return res.send({ accessToken: token });
+      }
+
+      res.status(403).send({ accessToken: "" });
+    });
+
+    app.get("/getReviewer", async (req, res) => {
+      try {
+        const users = await reviewerCollection.find().toArray();
+        return res.send(users);
+      } catch (error) {
+        console.error(error);
+        return res
+          .status(500)
+          .send({ success: false, error: "Internal Server Error" });
+      }
+    });
 
     const { ObjectId } = require("mongodb");
 
@@ -246,85 +353,24 @@ async function run() {
       res.sendFile(filePath);
     });
 
-    const lastAccessed = {};
-    // author GET Coding
+
     app.get("/author", async (req, res) => {
       // Get the email parameter from the request query string
       const email = req.query.email;
-      // Create a query object that matches the email field
-      const query = { email: email };
-      // Find the document that matches the query
-      const cursor = usersCollection.find(query);
-      const data = await cursor.toArray();
-      res.send(data);
-    });
-
-    //update author data
-    app.put("/authorData/:email", async (req, res) => {
-      const email = req.params.email;
-      const user = req.body;
-      const filter = { email: email };
-      const options = { upsert: true };
-
-      // create a new object with non-null properties from `user`
-      const updateUser = {};
-      if (user.authorName !== null && user.authorName !== undefined) {
-        updateUser.authorName = user.authorName;
-      }
-      if (user.phone !== null && user.phone !== undefined) {
-        updateUser.phone = user.phone;
-      }
-      if (user.institutionName !== null && user.institutionName !== undefined) {
-        updateUser.institutionName = user.institutionName;
-      }
-      if (user.department !== null && user.department !== undefined) {
-        updateUser.department = user.department;
-      }
-      if (user.city !== null && user.city !== undefined) {
-        updateUser.city = user.city;
-      }
-      if (user.postalCode !== null && user.postalCode !== undefined) {
-        updateUser.postalCode = user.postalCode;
-      }
-      if (user.imageUrl !== null && user.imageUrl !== undefined) {
-        updateUser.profilePic = user.imageUrl;
-      }
-
-      const updatedUser = {
-        $set: updateUser,
-      };
 
       try {
-        const result = await usersCollection.updateOne(
-          filter,
-          updatedUser,
-          options
-        );
-        res.send(result);
-      } catch (err) {
-        console.error(err);
-        res.status(500).send(err);
+        // Execute the queries on both collections asynchronously
+        const [usersData, reviewerData] = await Promise.all([
+          usersCollection.find({ email: email }).toArray(),
+          reviewerCollection.find({ email: email }).toArray(),
+        ]);
+        const combinedData = [...usersData, ...reviewerData];
+        res.send(combinedData);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
       }
     });
 
-    //////////end of
-
-    // Editor GET Coding
-    app.get("/editor", async (req, res) => {
-      const editor = await editorCollection.find({ query }).toArray();
-      res.send(editor);
-    });
-
-    ///////////Delete Opatation///////////
-    app.delete("/submittedData/:id", (req, res) => {
-      dataCollection
-        .deleteOne({ _id: ObjectId(req.params.id) })
-        .then((result) => {
-          res.send(result.deletedCount > 0);
-        });
-    });
-
-    // Retrieve the data for the requested ID from the database
 
     app.get("/users/admin", async (req, res) => {
       const query = {};
@@ -337,76 +383,11 @@ async function run() {
       const user = await usersCollection.find(query).toArray();
       res.send(user);
     });
-
-    //UPDATE Users Data Collection
-    app.put("/users/admin/:id", verifyJWT, async (req, res) => {
-      const decodedEmail = req.decoded.email;
-      const query = { email: decodedEmail };
-      const user = await usersCollection.findOne(query);
-      if (user?.role !== "admin") {
-        return res.status(401).send({ message: "Unauthorized Access" });
-      }
-      const id = req.params.id;
-      const filter = { _id: ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: "admin",
-        },
-      };
-      const options = { returnOriginal: false };
-
-      try {
-        const result = await usersCollection.findOneAndUpdate(
-          filter,
-          updateDoc,
-          options
-        );
-        res.send(result);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send(error);
-      }
-    });
-
-    //PUt Assign Reviewer
-    app.put("/assign/:id", async (req, res) => {
-      const id = req.params.id;
-      const { assignReviewer, assignReviewerEmail } = req.body;
-
-      const filter = { _id: ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          assignReviewer: assignReviewer,
-          assignReviewerEmail: assignReviewerEmail,
-        },
-      };
-      const options = { returnOriginal: false };
-
-      try {
-        const result = await dataCollection.findOneAndUpdate(
-          filter,
-          updateDoc,
-          options
-        );
-
-        // Check if the document was updated
-        if (!result.value) {
-          return res.status(404).send({ message: "Document not found" });
-        }
-
-        res.send(result);
-      } catch (error) {
-        res.status(500).send(error);
-      }
-    });
-
     // Editor GET Coding
     app.get("/reviewer", async (req, res) => {
       const editor = await reviewerCollection.find({ query }).toArray();
       res.send(editor);
     });
-
-    //Get Admin data
 
     app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
@@ -449,103 +430,154 @@ async function run() {
       }
     });
 
-    //authentication Api
-    // POST /authenticate
-    //reviewer login start
+    ///////////Delete Opatation///////////
+    app.delete("/submittedData/:id", (req, res) => {
+      dataCollection
+        .deleteOne({ _id: ObjectId(req.params.id) })
+        .then((result) => {
+          res.send(result.deletedCount > 0);
+        });
+    });
 
-    app.post("/reviewerLogin", async (req, res) => {
-      const { email, password, userType } = req.body;
+    //UPDATE PUT Opatation
+    app.put("/users/admin/:id", verifyJWT, async (req, res) => {
+      const decodedEmail = req.decoded.email;
+      const query = { email: decodedEmail };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res.status(401).send({ message: "Unauthorized Access" });
+      }
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const options = { returnOriginal: false };
+
       try {
-        if (userType === "author") {
-          const user = await usersCollection.findOne({ email });
-          if (user.role !== "admin"){
-            if (!user) {
-              return res.status(401).send({
-                success: false,
-                message: "Invalid email or authoremail password",
-              });
-            }
-  
-            if (user.password !== password) {
-              return res.status(401).send({
-                success: false,
-                message: "Invalid email or authorpasss password",
-              });
-            }
-            return res.send({
-              success: true,
-              message: "Author Login successful",
-              user,
-            });
-          }
-          else {
-            return res.send({
-              success: false,
-              message: "You are not an Author",
-              user,
-            });
-          }
-        } 
-        else if (userType === "editor") {
-          const user = await usersCollection.findOne({
-            email,
-          });
-
-          if (user.role === "admin") {
-            if (!user) {
-              return res
-                .status(401)
-                .send({ success: false, message: "Invalid email or password" });
-            }
-
-            if (user.password !== password) {
-              return res
-                .status(401)
-                .send({ success: false, message: "Invalid email or password" });
-            }
-            return res.send({
-              success: true,
-              message: "Editor Login successful",
-              user,
-            });
-          } else {
-            return res.send({
-              success: false,
-              message: "You are not an Editor",
-              user,
-            });
-          }
-        } else if (userType === "reviewer") {
-          const user = await reviewerCollection.findOne({
-            email,
-          });
-
-          if (!user) {
-            return res
-              .status(401)
-              .send({ success: false, message: "You are not a Reviewer" });
-          }
-
-          if (user.password !== password) {
-            return res
-              .status(401)
-              .send({ success: false, message: "Invalid email or password" });
-          }
-          return res.send({ success: true, message: " Reviewer Login successful", user });
-        } else {
-          return res
-            .status(401)
-            .json({ success: false, message: "Invalid user type" });
-        }
+        const result = await usersCollection.findOneAndUpdate(
+          filter,
+          updateDoc,
+          options
+        );
+        res.send(result);
       } catch (error) {
         console.error(error);
-        return res
-          .status(500)
-          .json({ success: false, error: "Internal Server Error" });
+        res.status(500).send(error);
       }
     });
 
-    //reviewer login end
+    app.put("/assign/:id", async (req, res) => {
+      const id = req.params.id;
+      const { assignReviewer, assignReviewerEmail } = req.body;
+
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          assignReviewer: assignReviewer,
+          assignReviewerEmail: assignReviewerEmail,
+        },
+      };
+      const options = { returnOriginal: false };
+
+      try {
+        const result = await dataCollection.findOneAndUpdate(
+          filter,
+          updateDoc,
+          options
+        );
+
+        // Check if the document was updated
+        if (!result.value) {
+          return res.status(404).send({ message: "Document not found" });
+        }
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send(error);
+      }
+    });
+
+   
+    app.put("/authorData/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const filter = { email: email };
+      const options = { upsert: true };
+
+      // create a new object with non-null properties from `user`
+      const updateUser = {};
+      if (user.authorName !== null && user.authorName !== undefined) {
+        updateUser.authorName = user.authorName;
+      }
+      if (user.reviewerName !== null && user.reviewerName !== undefined) {
+        updateUser.reviewerName = user.reviewerName;
+      }
+
+      if (user.phone !== null && user.phone !== undefined) {
+        updateUser.phone = user.phone;
+      }
+      if (user.institutionName !== null && user.institutionName !== undefined) {
+        updateUser.institutionName = user.institutionName;
+      }
+      if (user.department !== null && user.department !== undefined) {
+        updateUser.department = user.department;
+      }
+      if (user.city !== null && user.city !== undefined) {
+        updateUser.city = user.city;
+      }
+      if (user.postalCode !== null && user.postalCode !== undefined) {
+        updateUser.postalCode = user.postalCode;
+      }
+      if (user.imageUrl !== null && user.imageUrl !== undefined) {
+        updateUser.profilePic = user.imageUrl;
+      }
+
+      const updatedUser = {
+        $set: updateUser,
+      };
+
+      try {
+        let result;
+        let collectionName;
+
+        // Check if the email exists in the usersCollection
+        const usersDoc = await usersCollection.findOne(filter);
+        if (usersDoc) {
+          result = await usersCollection.updateOne(
+            filter,
+            updatedUser,
+            options
+          );
+          collectionName = "usersCollection";
+        } else {
+          // Check if the email exists in the reviewerCollection
+          const reviewerDoc = await reviewerCollection.findOne(filter);
+          if (reviewerDoc) {
+            result = await reviewerCollection.updateOne(
+              filter,
+              updatedUser,
+              options
+            );
+            collectionName = "reviewerCollection";
+          } else {
+            throw new Error("No document found with the provided email");
+          }
+        }
+
+        const updateResult = {
+          collection: collectionName,
+          result: result,
+        };
+
+        res.send(updateResult);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send(err);
+      }
+    });
   } finally {
     // await client.close();
   }
