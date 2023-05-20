@@ -3,11 +3,10 @@ const app = express();
 const path = require("path");
 var cors = require("cors");
 const bodyParser = require("body-parser");
-const crypto = require("crypto");
-const FormData = require("form-data");
+
 const mongoose = require("mongoose");
 const multer = require("multer");
-var morganLogger  = require('morgan');
+var morganLogger = require("morgan");
 const port = process.env.PORT || 4000;
 require("dotenv").config();
 
@@ -21,9 +20,6 @@ app.use(cors());
 app.use(express.json());
 var jwt = require("jsonwebtoken");
 
-// var token = jwt.sign({ foo: 'bar' }, 'shhhhh');
-
-// Set up Multer storage options
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "uploads/"); // Uploads will be stored in the 'uploads/' directory
@@ -37,7 +33,6 @@ const storage = multer.diskStorage({
 
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const { query } = require("express");
-const morgan = require("morgan");
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.qdbumy3.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -76,13 +71,12 @@ async function run() {
     const reviewerCollection = client.db("ejournal20").collection("reviewer");
     const dataCollection = client.db("ejournal20").collection("submittedData");
     const usersCollection = client.db("ejournal20").collection("users");
-  
 
     // author Post Coding
     app.post("/author", async (req, res) => {
       const author = req.body;
       const query = { email: author.email };
-    
+
       const exists = await usersCollection.findOne(query);
       if (exists) {
         return res.send({ success: false, email: exists });
@@ -92,62 +86,33 @@ async function run() {
     });
     const upload = multer({ storage: storage });
 
+    //reviewer add into db
 
-    //reviewer add into db 
-    
-      app.post("/addReviewer", async (req, res) => {
-        const author = req.body;
-        const query = { email: author.email };
-      console.log('Hello',author);
-        const exists = await reviewerCollection.findOne(query);
-        if (exists) {
-          return res.send({ success: false, email: exists });
-        }
-        const result = await reviewerCollection.insertOne(author);
-        return res.send({ success: true,author });
-      });
+    app.post("/addReviewer", async (req, res) => {
+      const author = req.body;
+      const query = { email: author.email };
+      console.log("Hello", author);
+      const exists = await reviewerCollection.findOne(query);
+      if (exists) {
+        return res.send({ success: false, email: exists });
+      }
+      const result = await reviewerCollection.insertOne(author);
+      return res.send({ success: true, author });
+    });
 
-      
-//get reviewer from db
+    //get reviewer from db
 
-app.get("/getReviewer", async (req, res) => {
-  try {
-    const users = await reviewerCollection.find().toArray();
-    return res.send(users);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({ success: false, error: "Internal Server Error" });
-  }
-});
-
-//reviewer login start
-app.post("/reviewerLogin", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    console.log('Hello',email, password);
-
-    const user = await reviewerCollection.findOne({ email });
-
-    if (!user) {
-      return res.status(401).send({ success: false, message: "Invalid email or password" });
-    }
-
-    if (user.password !== password) {
-      return res.status(401).send({ success: false, message: "Invalid email or password" });
-    }
-
-    // If the email and password are valid, you can consider the user as logged in
-    return res.send({ success: true, message: "Login successful", user });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({ success: false, error: "Internal Server Error" });
-  }
-});
-
-//reviewer login end
-
-
-
+    app.get("/getReviewer", async (req, res) => {
+      try {
+        const users = await reviewerCollection.find().toArray();
+        return res.send(users);
+      } catch (error) {
+        console.error(error);
+        return res
+          .status(500)
+          .send({ success: false, error: "Internal Server Error" });
+      }
+    });
 
     // Define the route for handling file uploads
     app.post("/file", upload.single("file"), function (req, res, next) {
@@ -168,7 +133,7 @@ app.post("/reviewerLogin", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
 
-      const user = await usersCollection || reviewerCollection .findOne(query);
+      const user = (await usersCollection) || reviewerCollection.findOne(query);
 
       if (user) {
         const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
@@ -222,7 +187,6 @@ app.post("/reviewerLogin", async (req, res) => {
 
     const { ObjectId } = require("mongodb");
 
-
     app.get("/submittedData/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -272,7 +236,6 @@ app.post("/reviewerLogin", async (req, res) => {
       const cursor = dataCollection.find({ assignReviewerEmail: email });
       const data = await cursor.toArray();
       res.send(data);
-    
     });
 
     //npm run start-dev
@@ -448,29 +411,31 @@ app.post("/reviewerLogin", async (req, res) => {
     app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email };
+      console.log("Hello", query);
       const user = await usersCollection.findOne(query);
       res.send({ isAdmin: user?.role === "admin" });
+      console.log("Hello", res.send);
     });
 
-   //find reviwere 
-   app.get("/users/reviewer/:email", async (req, res) => {
-    try {
-      const email = req.params.email;
-      const query = { email };
-  
-      const user = await reviewerCollection.findOne(query);
-  
-      if (user) {
-        res.send({ isReviewer: true });
-      } else {
-        res.send({ isReviewer: false });
-      }
-    } catch (error) {
-      res.status(500).send({ error: "An error occurred while fetching the reviewer." });
-    }
-  });
+    //find reviwere
+    app.get("/users/reviewer/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { email };
 
-  
+        const user = await reviewerCollection.findOne(query);
+
+        if (user) {
+          res.send({ isReviewer: true });
+        } else {
+          res.send({ isReviewer: false });
+        }
+      } catch (error) {
+        res
+          .status(500)
+          .send({ error: "An error occurred while fetching the reviewer." });
+      }
+    });
 
     app.get("/reviewer/:email", async (req, res) => {
       const email = req.params.email;
@@ -484,22 +449,103 @@ app.post("/reviewerLogin", async (req, res) => {
       }
     });
 
-    
+    //authentication Api
+    // POST /authenticate
+    //reviewer login start
 
+    app.post("/reviewerLogin", async (req, res) => {
+      const { email, password, userType } = req.body;
+      try {
+        if (userType === "author") {
+          const user = await usersCollection.findOne({ email });
+          if (user.role !== "admin"){
+            if (!user) {
+              return res.status(401).send({
+                success: false,
+                message: "Invalid email or authoremail password",
+              });
+            }
+  
+            if (user.password !== password) {
+              return res.status(401).send({
+                success: false,
+                message: "Invalid email or authorpasss password",
+              });
+            }
+            return res.send({
+              success: true,
+              message: "Author Login successful",
+              user,
+            });
+          }
+          else {
+            return res.send({
+              success: false,
+              message: "You are not an Author",
+              user,
+            });
+          }
+        } 
+        else if (userType === "editor") {
+          const user = await usersCollection.findOne({
+            email,
+          });
 
+          if (user.role === "admin") {
+            if (!user) {
+              return res
+                .status(401)
+                .send({ success: false, message: "Invalid email or password" });
+            }
 
-    //client error handler
-app.use((req, res, next) => {
-  res.status(404).json({ message: " Route not found" });
-  next();
-});
+            if (user.password !== password) {
+              return res
+                .status(401)
+                .send({ success: false, message: "Invalid email or password" });
+            }
+            return res.send({
+              success: true,
+              message: "Editor Login successful",
+              user,
+            });
+          } else {
+            return res.send({
+              success: false,
+              message: "You are not an Editor",
+              user,
+            });
+          }
+        } else if (userType === "reviewer") {
+          const user = await reviewerCollection.findOne({
+            email,
+          });
 
-//Server error handler
-app.use((err, req, res, next) => {
-  console.error(err); // Log the error object to the console
-  res.status(500).send("Something broke!"); // Send a 500 status code and "Something broke!" message as the response
-});
+          if (!user) {
+            return res
+              .status(401)
+              .send({ success: false, message: "You are not a Reviewer" });
+          }
 
+          if (user.password !== password) {
+            return res
+              .status(401)
+              .send({ success: false, message: "Invalid email or password" });
+          }
+          return res.send({ success: true, message: " Reviewer Login successful", user });
+        } else {
+          return res
+            .status(401)
+            .json({ success: false, message: "Invalid user type" });
+        }
+      } catch (error) {
+        console.error(error);
+        return res
+          .status(500)
+          .json({ success: false, error: "Internal Server Error" });
+      }
+    });
+
+    //reviewer login end
   } finally {
     // await client.close();
   }
@@ -509,8 +555,6 @@ run().catch(console.dir);
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
-
-
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
