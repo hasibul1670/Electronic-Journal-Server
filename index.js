@@ -209,18 +209,11 @@ async function run() {
       return res.send({ success: true, author });
     });
 
-    // Define the route for handling file uploads
     app.post("/file", upload.single("file"), function (req, res, next) {
-      // Access the uploaded file using req.file
       const file = req.file;
-
-      // Create a URL to the uploaded file
       const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
         file.filename
       }`;
-
-      // Do something with the file URL, such as saving it to a database
-
       res.send(`${fileUrl}`);
     });
 
@@ -298,9 +291,7 @@ async function run() {
       try {
         const id = req.params.id;
         const objectId = ObjectId(id);
-
         const user = await dataCollection.findOne({ _id: objectId });
-
         if (!user) {
           res.status(404).send("Data not found");
           return;
@@ -353,7 +344,6 @@ async function run() {
       res.sendFile(filePath);
     });
 
-
     app.get("/author", async (req, res) => {
       // Get the email parameter from the request query string
       const email = req.query.email;
@@ -370,7 +360,6 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-
 
     app.get("/users/admin", async (req, res) => {
       const query = {};
@@ -472,7 +461,6 @@ async function run() {
     app.put("/assign/:id", async (req, res) => {
       const id = req.params.id;
       const { assignReviewer, assignReviewerEmail } = req.body;
-
       const filter = { _id: ObjectId(id) };
       const updateDoc = {
         $set: {
@@ -500,7 +488,34 @@ async function run() {
       }
     });
 
-   
+    app.put("/reviewerComment/:id", async (req, res) => {
+      const id = req.params.id;
+      const { reviewerComment } = req.body;
+      console.log("Hello", reviewerComment);
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          reviewerComment: reviewerComment,
+        },
+      };
+      const options = { returnOriginal: false };
+
+      try {
+        const result = await dataCollection.findOneAndUpdate(
+          filter,
+          updateDoc,
+          options
+        );
+        if (!result.value) {
+          return res.status(404).send({ message: "Document not found" });
+        }
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send(error);
+      }
+    });
+
     app.put("/authorData/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
