@@ -490,12 +490,21 @@ async function run() {
 
     app.put("/reviewerComment/:id", async (req, res) => {
       const id = req.params.id;
-      const { reviewerComment } = req.body;
-      console.log("Hello", reviewerComment);
+      const { 
+        contentAbtract,
+        methodOriginality,
+        referenceOriginality,
+        ethicalConsiderations,
+        experimentalResultOriginality
+      } = req.body;
       const filter = { _id: ObjectId(id) };
       const updateDoc = {
         $set: {
-          reviewerComment: reviewerComment,
+          contentAbtract:contentAbtract,
+          methodOriginality:methodOriginality,
+          referenceOriginality:referenceOriginality,
+          ethicalConsiderations:ethicalConsiderations,
+          experimentalResultOriginality:experimentalResultOriginality
         },
       };
       const options = { returnOriginal: false };
