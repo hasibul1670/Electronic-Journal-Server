@@ -525,6 +525,33 @@ async function run() {
       }
     });
 
+    app.put("/editorComment/:id", async (req, res) => {
+      const id = req.params.id;
+      const { 
+        editorComment
+      } = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          editorComment:editorComment,
+        },
+      };
+      const options = { returnOriginal: false };
+      try {
+        const result = await dataCollection.findOneAndUpdate(
+          filter,
+          updateDoc,
+          options
+        );
+        if (!result.value) {
+          return res.status(404).send({ message: "Document not found" });
+        }
+        res.send(result);
+      } catch (error) {
+        res.status(500).send(error);
+      }
+    });
+
     app.put("/authorData/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
