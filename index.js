@@ -9,7 +9,6 @@ const multer = require("multer");
 var morganLogger = require("morgan");
 const port = process.env.PORT || 4000;
 require("dotenv").config();
-const multer = require("multer");
 
 
 //middleware
@@ -30,12 +29,18 @@ var jwt = require("jsonwebtoken");
 //   },
 // });
 
+// Set up multer storage configuration
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "/tmp/uploads/"); // Uploads will be stored in the '/tmp/uploads/' directory
+    // Specify the directory where uploaded files will be stored
+    cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
-    cb(null, file.originalname); // Use the original file name as the file name
+    // Generate a unique filename for the uploaded file
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const fileExtension = path.extname(file.originalname);
+    const fileName = file.fieldname + "-" + uniqueSuffix + fileExtension;
+    cb(null, fileName);
   },
 });
 
@@ -228,17 +233,19 @@ async function run() {
     //   res.send(`${fileUrl}`);
     // });
   
+    const upload = multer({ storage: storage });
 
-const upload = multer({ storage });
-
-app.post("/file", upload.single("file"), function (req, res, next) {
-  const file = req.file;
-  const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
-    file.filename
-  }`;
-  res.send(`${fileUrl}`);
-});
-
+    // Handle file upload POST request
+    app.post("/file", upload.single("file"), function (req, res, next) {
+      // Retrieve the uploaded file information
+      const file = req.file;
+    
+      // Construct the file URL
+      const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
+    
+      // Send the file URL as the response
+      res.send(fileUrl);
+    });
 
 
     app.post("/submittedData", async (req, res) => {
