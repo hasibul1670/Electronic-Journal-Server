@@ -9,8 +9,8 @@ const multer = require("multer");
 var morganLogger = require("morgan");
 const port = process.env.PORT || 4000;
 require("dotenv").config();
+const multer = require("multer");
 
-var UPLOAD_FOLDER = "uploads/";
 
 //middleware
 app.use(morganLogger("dev"));
@@ -20,16 +20,27 @@ app.use(cors());
 app.use(express.json());
 var jwt = require("jsonwebtoken");
 
+
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, "uploads/"); // Uploads will be stored in the 'uploads/' directory
+//   },
+//   filename: function (req, file, cb) {
+//     cb(null, file.originalname); // Use the original file name as the file name
+//   },
+// });
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/"); // Uploads will be stored in the 'uploads/' directory
+    cb(null, "/tmp/uploads/"); // Uploads will be stored in the '/tmp/uploads/' directory
   },
   filename: function (req, file, cb) {
     cb(null, file.originalname); // Use the original file name as the file name
   },
 });
 
-//npm run start-dev
+
+//npm run dev
 
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const { query } = require("express");
@@ -180,7 +191,17 @@ async function run() {
           .json({ success: false, error: "Internal Server Error" });
       }
     });
-
+    app.post("/addReviewer", async (req, res) => {
+      const author = req.body;
+      const query = { email: author.email };
+      console.log("Hello", author);
+      const exists = await reviewerCollection.findOne(query);
+      if (exists) {
+        return res.send({ success: false, email: exists });
+      }
+      const result = await reviewerCollection.insertOne(author);
+      return res.send({ success: true, author });
+    });
     // author Post Coding
     app.post("/author", async (req, res) => {
       const author = req.body;
@@ -193,29 +214,32 @@ async function run() {
       const result = await usersCollection.insertOne(author);
       return res.send({ success: true, result });
     });
-    const upload = multer({ storage: storage });
+  
 
-    //reviewer add into db
+    //File Uploaded 
 
-    app.post("/addReviewer", async (req, res) => {
-      const author = req.body;
-      const query = { email: author.email };
-      console.log("Hello", author);
-      const exists = await reviewerCollection.findOne(query);
-      if (exists) {
-        return res.send({ success: false, email: exists });
-      }
-      const result = await reviewerCollection.insertOne(author);
-      return res.send({ success: true, author });
-    });
+    // const upload = multer({ storage: storage });
 
-    app.post("/file", upload.single("file"), function (req, res, next) {
-      const file = req.file;
-      const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
-        file.filename
-      }`;
-      res.send(`${fileUrl}`);
-    });
+    // app.post("/file", upload.single("file"), function (req, res, next) {
+    //   const file = req.file;
+    //   const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
+    //     file.filename
+    //   }`;
+    //   res.send(`${fileUrl}`);
+    // });
+  
+
+const upload = multer({ storage });
+
+app.post("/file", upload.single("file"), function (req, res, next) {
+  const file = req.file;
+  const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
+    file.filename
+  }`;
+  res.send(`${fileUrl}`);
+});
+
+
 
     app.post("/submittedData", async (req, res) => {
       try {
@@ -638,6 +662,7 @@ run().catch(console.dir);
 app.get("/", (req, res) => {
   res.send("Welcome to E-journal Server ");
 });
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
