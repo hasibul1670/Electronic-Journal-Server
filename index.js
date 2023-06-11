@@ -3,13 +3,14 @@ const app = express();
 const path = require("path");
 var cors = require("cors");
 const bodyParser = require("body-parser");
-
+const fs = require("fs");
 const mongoose = require("mongoose");
 const multer = require("multer");
 var morganLogger = require("morgan");
 const port = process.env.PORT || 4000;
 require("dotenv").config();
-
+const { v4: uuidv4 } = require("uuid");
+const nodemailer = require("nodemailer");
 
 //middleware
 app.use(morganLogger("dev"));
@@ -18,32 +19,16 @@ app.set("view engin", "ejs");
 app.use(cors());
 app.use(express.json());
 var jwt = require("jsonwebtoken");
+app.use(express.urlencoded({ extended: true }));
 
-
-// const storage = multer.diskStorage({
-//   destination: function (req, file, cb) {
-//     cb(null, "uploads/"); // Uploads will be stored in the 'uploads/' directory
-//   },
-//   filename: function (req, file, cb) {
-//     cb(null, file.originalname); // Use the original file name as the file name
-//   },
-// });
-
-// Set up multer storage configuration
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Specify the directory where uploaded files will be stored
     cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
-    // Generate a unique filename for the uploaded file
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const fileExtension = path.extname(file.originalname);
-    const fileName = file.fieldname + "-" + uniqueSuffix + fileExtension;
-    cb(null, fileName);
+    cb(null, file.originalname);
   },
 });
-
 
 //npm run dev
 
@@ -90,6 +75,46 @@ async function run() {
 
     //POSt Operation
     //reviewer login start
+
+    //send Email Message to Author
+
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: process.env.SMTP_USER_NAME, // generated ethereal user
+        pass: process.env.SMTP_PASSWORD,
+      },
+    });
+
+    app.post("/send-email", async (req, res) => {
+      try {
+        const { email, subject, message } = req.body;
+       
+
+        // Create the email message
+        const mailOptions = {
+          from: process.env.SMTP_USER_NAME, // Sender email address
+          to: email, // Recipient email address
+          subject: subject, // Email subject
+          text: message, // Plain text body
+        };
+
+        // Send the email using the transporter
+        const info = await transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error(error);
+            res
+              .status(500)
+              .json({ success: false, message: "Error sending email" });
+          } else {
+            console.log("Email sent:", info.response);
+            res.json({ success: true, message: "Email sent successfully" });
+          }
+        });
+      } catch (error) {}
+    });
 
     app.post("/reviewerLogin", async (req, res) => {
       const { email, password, userType } = req.body;
@@ -219,39 +244,21 @@ async function run() {
       const result = await usersCollection.insertOne(author);
       return res.send({ success: true, result });
     });
-  
 
-    //File Uploaded 
+    // File Uploaded
 
-    // const upload = multer({ storage: storage });
-
-    // app.post("/file", upload.single("file"), function (req, res, next) {
-    //   const file = req.file;
-    //   const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
-    //     file.filename
-    //   }`;
-    //   res.send(`${fileUrl}`);
-    // });
-  
     const upload = multer({ storage: storage });
-
-    // Handle file upload POST request
     app.post("/file", upload.single("file"), function (req, res, next) {
-      // Retrieve the uploaded file information
       const file = req.file;
-    
-      // Construct the file URL
-      const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
-    
-      // Send the file URL as the response
-      res.send(fileUrl);
+      const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
+        file.filename
+      }`;
+      res.send(`${fileUrl}`);
     });
-
 
     app.post("/submittedData", async (req, res) => {
       try {
         // Get the uploaded file from the request
-
         const articleType = req.body.articleType;
         const title = req.body.title;
         const email = req.body.email;
@@ -262,10 +269,38 @@ async function run() {
         const comment = req.body.comment;
         const reviewer = req.body.reviewer;
 
+        const currentDate = new Date();
+        const timeOptions = {
+          timeZone: "Asia/Dhaka",
+          hour12: true,
+          hour: "2-digit",
+          minute: "2-digit",
+        };
+        const dateOptions = {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        };
+        const timeFormat = new Intl.DateTimeFormat("en-US", timeOptions);
+        const dateFormat = new Intl.DateTimeFormat("en-US", dateOptions);
+        const currentTime = timeFormat.format(currentDate);
+        const currentDateString = dateFormat.format(currentDate);
+
+        const year = currentDate.getFullYear();
+        const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
+
+        const count = await dataCollection.countDocuments();
+        const currentPaperNo = count + 1; //4+1=5
+        const paddedPaperNo = currentPaperNo.toString().padStart(3, "0");
+        const uniqueID = `${year}-${month}-${paddedPaperNo}`;
+
         // Store the file in MongoDB
         const db = client.db("ejournal20");
         const collection = db.collection("submittedData");
         const result = await collection.insertOne({
+          submissionTime: currentTime,
+          submissionDate: currentDateString,
+          articleId: uniqueID,
           url: url,
           email: email,
           fileName: fileName,
@@ -281,11 +316,10 @@ async function run() {
         res.send(`File uploaded successfully. ID: ${result.insertedId}`);
       } catch (error) {
         // Send an error response
+        console.log("Hello", error.message);
         res.status(500).send(error.message);
       }
     });
-
-    //GET operations
 
     app.get("/jwt", async (req, res) => {
       const email = req.query.email;
@@ -373,6 +407,19 @@ async function run() {
       const { filename } = req.params;
       const filePath = path.join(__dirname, "uploads", filename);
       res.sendFile(filePath);
+    });
+
+    app.get("/uploads", (req, res) => {
+      const uploadFolder = path.join(__dirname, "uploads");
+
+      fs.readdir(uploadFolder, (err, files) => {
+        if (err) {
+          console.error("Error retrieving files:", err);
+          res.status(500).send("Error retrieving files");
+        } else {
+          res.send(files);
+        }
+      });
     });
 
     app.get("/author", async (req, res) => {
@@ -521,21 +568,21 @@ async function run() {
 
     app.put("/reviewerComment/:id", async (req, res) => {
       const id = req.params.id;
-      const { 
+      const {
         contentAbtract,
         methodOriginality,
         referenceOriginality,
         ethicalConsiderations,
-        experimentalResultOriginality
+        experimentalResultOriginality,
       } = req.body;
       const filter = { _id: ObjectId(id) };
       const updateDoc = {
         $set: {
-          contentAbtract:contentAbtract,
-          methodOriginality:methodOriginality,
-          referenceOriginality:referenceOriginality,
-          ethicalConsiderations:ethicalConsiderations,
-          experimentalResultOriginality:experimentalResultOriginality
+          contentAbtract: contentAbtract,
+          methodOriginality: methodOriginality,
+          referenceOriginality: referenceOriginality,
+          ethicalConsiderations: ethicalConsiderations,
+          experimentalResultOriginality: experimentalResultOriginality,
         },
       };
       const options = { returnOriginal: false };
@@ -558,13 +605,11 @@ async function run() {
 
     app.put("/editorComment/:id", async (req, res) => {
       const id = req.params.id;
-      const { 
-        editorComment
-      } = req.body;
+      const { editorComment } = req.body;
       const filter = { _id: ObjectId(id) };
       const updateDoc = {
         $set: {
-          editorComment:editorComment,
+          editorComment: editorComment,
         },
       };
       const options = { returnOriginal: false };
@@ -669,7 +714,6 @@ run().catch(console.dir);
 app.get("/", (req, res) => {
   res.send("Welcome to E-journal Server ");
 });
-
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
