@@ -67,16 +67,11 @@ async function run() {
   try {
     await client.connect();
     console.log("DB connected!!!");
-
     const editorCollection = client.db("ejournal20").collection("editor");
     const reviewerCollection = client.db("ejournal20").collection("reviewer");
     const dataCollection = client.db("ejournal20").collection("submittedData");
     const usersCollection = client.db("ejournal20").collection("users");
 
-    //POSt Operation
-    //reviewer login start
-
-    //send Email Message to Author
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -236,13 +231,13 @@ async function run() {
     app.post("/author", async (req, res) => {
       const author = req.body;
       const query = { email: author.email };
-
       const exists = await usersCollection.findOne(query);
       if (exists) {
-        return res.send({ success: false, email: exists });
+
+        return res.send({ success: false, data: exists, status:409,message:"This Email is Already Used!! please Login!!" });
       }
       const result = await usersCollection.insertOne(author);
-      return res.send({ success: true, result });
+      return res.send({ success: true, result ,status:200,message:"SignUp Successfully Done!! please Login!!" });
     });
 
     // File Uploaded
