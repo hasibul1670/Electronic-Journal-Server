@@ -72,7 +72,6 @@ async function run() {
     const dataCollection = client.db("ejournal20").collection("submittedData");
     const usersCollection = client.db("ejournal20").collection("users");
 
-
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,
@@ -86,7 +85,6 @@ async function run() {
     app.post("/send-email", async (req, res) => {
       try {
         const { email, subject, message } = req.body;
-       
 
         // Create the email message
         const mailOptions = {
@@ -233,14 +231,97 @@ async function run() {
       const query = { email: author.email };
       const exists = await usersCollection.findOne(query);
       if (exists) {
-
-        return res.send({ success: false, data: exists, status:409,message:"This Email is Already Used!! please Login!!" });
+        return res.send({
+          success: false,
+          data: exists,
+          status: 409,
+          message: "This Email is Already Used!! please Login!!",
+        });
       }
       const result = await usersCollection.insertOne(author);
-      return res.send({ success: true, result ,status:200,message:"SignUp Successfully Done!! please Login!!" });
+      return res.send({
+        success: true,
+        result,
+        status: 200,
+        message: "SignUp Successfully Done!! please Login!!",
+      });
     });
 
-    // File Uploaded
+    //!forget Password
+
+    app.post("/forget-password", async (req, res) => {
+      const { email } = req.body;
+      console.log("Hello", email);
+      const isExist = await usersCollection.findOne({ email });
+      if (!isExist) {
+        res.send({
+          success: false,
+          status: 404,
+          message:
+            "Email is Incorrect or You have not verified your Email Address",
+        });
+      } else {
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
+          expiresIn: "72h",
+        });
+
+        // Send forget Password Email
+        try {
+          // Create the email message
+          const mailOptions = {
+            from: process.env.SMTP_USER_NAME, // Sender email address
+            to: email, // Recipient email address (assuming email is a string representing the email address)
+            subject: "Reset Password Email", // Email subject
+            html: `<p>Please Click Here <a href="${process.env.CLIENT_URL}/reset-password/${token}" target="_blank">to reset Your password</a></p>`,
+          };
+
+          // Send the email using the transporter
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              console.error(error);
+              res
+                .status(500)
+                .json({ success: false, message: "Error sending email" });
+            } else {
+              console.log("Email sent:", info.response);
+              res.json({
+                success: true,
+                status: 200,
+                message: "Please Go to Your Email for reset Your Password",
+              });
+            }
+          });
+        } catch (error) {
+          // Handle any errors that might occur during email sending or token generation
+          console.error(error);
+          res
+            .status(500)
+            .json({ success: false, message: "Error sending email" });
+        }
+      }
+    });
+
+    //!Reset Password
+
+    app.patch("/reset-password", async (req, res) => {
+      const { password, token } = req.body;
+      const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+      const email = decoded.email;
+
+      console.log("Hello", email, password);
+
+      const result = await usersCollection.findOneAndUpdate(
+        { email: email },
+        { $set: { password: password } },
+        { returnOriginal: false }
+      );
+
+      if (!result) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      return res.status(200).json({ message: 'Password updated successfully' });
+
+    });
 
     const upload = multer({ storage: storage });
     app.post("/file", upload.single("file"), function (req, res, next) {
