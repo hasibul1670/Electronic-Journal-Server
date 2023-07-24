@@ -84,14 +84,15 @@ async function run() {
 
     app.post("/send-email", async (req, res) => {
       try {
-        const { email, subject, message } = req.body;
+        console.log("Hello", req.body);
+        const { email, subject, message, ArticleId, ArticleTitle } = req.body;
 
         // Create the email message
         const mailOptions = {
           from: process.env.SMTP_USER_NAME, // Sender email address
           to: email, // Recipient email address
           subject: subject, // Email subject
-          text: message, // Plain text body
+          text: `ArticleId: ${ArticleId}\nArticleTitle: ${ArticleTitle}\nEditor-Message: ${message}`,
         };
 
         // Send the email using the transporter
@@ -317,10 +318,9 @@ async function run() {
       );
 
       if (!result) {
-        return res.status(404).json({ message: 'User not found' });
+        return res.status(404).json({ message: "User not found" });
       }
-      return res.status(200).json({ message: 'Password updated successfully' });
-
+      return res.status(200).json({ message: "Password updated successfully" });
     });
 
     const upload = multer({ storage: storage });
