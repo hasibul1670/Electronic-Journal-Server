@@ -1,4 +1,5 @@
 const express = require("express");
+const zlib = require("zlib");
 const app = express();
 const path = require("path");
 var cors = require("cors");
@@ -15,7 +16,7 @@ const nodemailer = require("nodemailer");
 //middleware
 app.use(morganLogger("dev"));
 app.use(bodyParser.json());
-app.set("view engin", "ejs");
+app.set("view engine", "ejs");
 app.use(cors());
 app.use(express.json());
 var jwt = require("jsonwebtoken");
@@ -29,8 +30,6 @@ const storage = multer.diskStorage({
     cb(null, file.originalname);
   },
 });
-
-//npm run dev
 
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const { query } = require("express");
@@ -84,10 +83,11 @@ async function run() {
 
     app.post("/send-email", async (req, res) => {
       try {
-        console.log("Hello", req.body);
         const { email, subject, message, ArticleId, ArticleTitle } = req.body;
 
         // Create the email message
+
+        console.log("Hello send email", email);
         const mailOptions = {
           from: process.env.SMTP_USER_NAME, // Sender email address
           to: email, // Recipient email address
@@ -96,14 +96,14 @@ async function run() {
         };
 
         // Send the email using the transporter
-        const info = await transporter.sendMail(mailOptions, (error, info) => {
+        transporter.sendMail(mailOptions, (error, info) => {
           if (error) {
             console.error(error);
             res
               .status(500)
               .json({ success: false, message: "Error sending email" });
           } else {
-            console.log("Email sent:", info.response);
+     
             res.json({ success: true, message: "Email sent successfully" });
           }
         });
@@ -218,7 +218,7 @@ async function run() {
     app.post("/addReviewer", async (req, res) => {
       const author = req.body;
       const query = { email: author.email };
-      console.log("Hello", author);
+
       const exists = await reviewerCollection.findOne(query);
       if (exists) {
         return res.send({ success: false, email: exists });
@@ -284,7 +284,7 @@ async function run() {
                 .status(500)
                 .json({ success: false, message: "Error sending email" });
             } else {
-              console.log("Email sent:", info.response);
+          
               res.json({
                 success: true,
                 status: 200,
@@ -309,7 +309,7 @@ async function run() {
       const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
       const email = decoded.email;
 
-      console.log("Hello", email, password);
+
 
       const result = await usersCollection.findOneAndUpdate(
         { email: email },
@@ -333,6 +333,7 @@ async function run() {
     });
 
     app.post("/submittedData", async (req, res) => {
+      console.log("Hello", req.body);
       try {
         // Get the uploaded file from the request
         const articleType = req.body.articleType;
@@ -373,6 +374,7 @@ async function run() {
         // Store the file in MongoDB
         const db = client.db("ejournal20");
         const collection = db.collection("submittedData");
+
         const result = await collection.insertOne({
           submissionTime: currentTime,
           submissionDate: currentDateString,
@@ -391,8 +393,8 @@ async function run() {
         // Send a success response
         res.send(`File uploaded successfully. ID: ${result.insertedId}`);
       } catch (error) {
-        // Send an error response
-        console.log("Hello", error.message);
+       
+      
         res.status(500).send(error.message);
       }
     });
@@ -427,7 +429,7 @@ async function run() {
     });
 
     const { ObjectId } = require("mongodb");
-
+    //!!
     app.get("/submittedData/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -437,13 +439,15 @@ async function run() {
           res.status(404).send("Data not found");
           return;
         }
-
+        const fileurl = user.url;
+      
         res.send(user);
       } catch (err) {
         console.error(err);
         res.status(500).send("An error occurred while retrieving data");
       }
     });
+
     //get data collection
     app.get("/submittedData", verifyJWT, async (req, res) => {
       const decoded = req.decoded;
@@ -490,7 +494,7 @@ async function run() {
 
       fs.readdir(uploadFolder, (err, files) => {
         if (err) {
-          console.error("Error retrieving files:", err);
+         
           res.status(500).send("Error retrieving files");
         } else {
           res.send(files);
@@ -535,10 +539,10 @@ async function run() {
     app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email };
-      console.log("Hello", query);
+
       const user = await usersCollection.findOne(query);
       res.send({ isAdmin: user?.role === "admin" });
-      console.log("Hello", res.send);
+    
     });
 
     //find reviwere
@@ -568,12 +572,12 @@ async function run() {
       const user = await reviewerCollection.findOne(query);
       res.send(user);
       if (!user) {
-        console.log(`No user found with  ${email}`);
+      
         return res.status(404).send(`No user found with  ${email}`);
       }
     });
 
-    ///////////Delete Opatation///////////
+ 
     app.delete("/submittedData/:id", (req, res) => {
       dataCollection
         .deleteOne({ _id: ObjectId(req.params.id) })

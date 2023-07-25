@@ -20,7 +20,8 @@
     "mongoose": "^7.0.1",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.3",
-    "transloadit": "3.0.2"
+    "transloadit": "3.0.2",
+    "zlib": "^1.0.5"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.1",
