@@ -714,6 +714,7 @@ async function run() {
       const filter = { email: email };
       const options = { upsert: true };
 
+      console.log('Hello',user);
       // create a new object with non-null properties from `user`
       const updateUser = {};
       if (user.authorName !== null && user.authorName !== undefined) {
