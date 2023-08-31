@@ -1,5 +1,4 @@
 const express = require("express");
-const zlib = require("zlib");
 const app = express();
 const path = require("path");
 var cors = require("cors");
@@ -10,7 +9,6 @@ const multer = require("multer");
 var morganLogger = require("morgan");
 const port = process.env.PORT || 4000;
 require("dotenv").config();
-const { v4: uuidv4 } = require("uuid");
 const nodemailer = require("nodemailer");
 
 //middleware
@@ -30,7 +28,6 @@ const storage = multer.diskStorage({
     cb(null, file.originalname);
   },
 });
-
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const { query } = require("express");
 
@@ -86,8 +83,6 @@ async function run() {
         const { email, subject, message, ArticleId, ArticleTitle } = req.body;
 
         // Create the email message
-
-        console.log("Hello send email", email);
         const mailOptions = {
           from: process.env.SMTP_USER_NAME, // Sender email address
           to: email, // Recipient email address
@@ -103,7 +98,6 @@ async function run() {
               .status(500)
               .json({ success: false, message: "Error sending email" });
           } else {
-     
             res.json({ success: true, message: "Email sent successfully" });
           }
         });
@@ -226,10 +220,26 @@ async function run() {
       const result = await reviewerCollection.insertOne(author);
       return res.send({ success: true, author });
     });
+
+    //!verify Email + create user in DB 
+    app.post("/verify-user", async (req, res) => {
+      const { token } = req.body;
+      const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+      const createdData = decoded.author;
+      const result = await usersCollection.insertOne(createdData);
+      if (!result) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      return res
+        .status(200)
+        .json({ message: "User is Verified successfully!" });
+    });
+
     // author Post Coding
     app.post("/author", async (req, res) => {
       const author = req.body;
       const query = { email: author.email };
+      const { email } = author;
       const exists = await usersCollection.findOne(query);
       if (exists) {
         return res.send({
@@ -239,20 +249,47 @@ async function run() {
           message: "This Email is Already Used!! please Login!!",
         });
       }
-      const result = await usersCollection.insertOne(author);
-      return res.send({
-        success: true,
-        result,
-        status: 200,
-        message: "SignUp Successfully Done!! please Login!!",
+
+      //!create token by user Data
+
+      const token = jwt.sign({ author }, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "72h",
       });
+
+      //!make email body
+
+      const mailOptions = {
+        from: process.env.SMTP_USER_NAME, // Sender email address
+        to: email, // Recipient email address (assuming email is a string representing the email address)
+        subject: "Account Activation Email!", // Email subject
+        html: `<p>Please Click Here <a href="${process.env.CLIENT_URL}/users/activate/${token}" target="_blank"> to Activate your account </a> </p>`,
+      };
+
+      //!send email with nodemailer!!!
+      try {
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error(error);
+            res
+              .status(500)
+              .json({ success: false, message: "Error sending email" });
+          } else {
+            res.json({
+              success: true,
+              status: 200,
+              message: "Please Check your Email! To Activate Your Account.",
+            });
+          }
+        });
+      } catch (error) {
+   
+      }
     });
 
     //!forget Password
 
     app.post("/forget-password", async (req, res) => {
       const { email } = req.body;
-      console.log("Hello", email);
       const isExist = await usersCollection.findOne({ email });
       if (!isExist) {
         res.send({
@@ -284,7 +321,6 @@ async function run() {
                 .status(500)
                 .json({ success: false, message: "Error sending email" });
             } else {
-          
               res.json({
                 success: true,
                 status: 200,
@@ -308,9 +344,6 @@ async function run() {
       const { password, token } = req.body;
       const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
       const email = decoded.email;
-
-
-
       const result = await usersCollection.findOneAndUpdate(
         { email: email },
         { $set: { password: password } },
@@ -333,7 +366,6 @@ async function run() {
     });
 
     app.post("/submittedData", async (req, res) => {
-      console.log("Hello", req.body);
       try {
         // Get the uploaded file from the request
         const articleType = req.body.articleType;
@@ -393,8 +425,6 @@ async function run() {
         // Send a success response
         res.send(`File uploaded successfully. ID: ${result.insertedId}`);
       } catch (error) {
-       
-      
         res.status(500).send(error.message);
       }
     });
@@ -440,7 +470,7 @@ async function run() {
           return;
         }
         const fileurl = user.url;
-      
+
         res.send(user);
       } catch (err) {
         console.error(err);
@@ -494,7 +524,6 @@ async function run() {
 
       fs.readdir(uploadFolder, (err, files) => {
         if (err) {
-         
           res.status(500).send("Error retrieving files");
         } else {
           res.send(files);
@@ -542,7 +571,6 @@ async function run() {
 
       const user = await usersCollection.findOne(query);
       res.send({ isAdmin: user?.role === "admin" });
-    
     });
 
     //find reviwere
@@ -572,12 +600,10 @@ async function run() {
       const user = await reviewerCollection.findOne(query);
       res.send(user);
       if (!user) {
-      
         return res.status(404).send(`No user found with  ${email}`);
       }
     });
 
- 
     app.delete("/submittedData/:id", (req, res) => {
       dataCollection
         .deleteOne({ _id: ObjectId(req.params.id) })
@@ -713,9 +739,6 @@ async function run() {
       const user = req.body;
       const filter = { email: email };
       const options = { upsert: true };
-
-      console.log('Hello',user);
-      // create a new object with non-null properties from `user`
       const updateUser = {};
       if (user.authorName !== null && user.authorName !== undefined) {
         updateUser.authorName = user.authorName;
